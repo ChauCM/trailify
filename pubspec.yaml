@@ -1,0 +1,22 @@
+name: trailify
+description: Offline-first audit trail for Flutter apps with Firestore sync. Capture API calls, notifications, user actions, auth events, and errors.
+version: 1.0.0
+repository: https://github.com/ChauCM/trailify
+homepage: https://github.com/ChauCM/trailify
+topics: [ audit-trail, logger, debugging, firestore ]
+
+environment:
+  sdk: '>=2.17.0 <4.0.0'
+  flutter: ">=1.17.0"
+
+dependencies:
+  dio: ^5.8.0+1
+  flutter:
+    sdk: flutter
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^2.0.0
+
+flutter:
