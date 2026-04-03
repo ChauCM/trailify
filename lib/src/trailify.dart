@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import 'trailify_identity.dart';
 import 'trailify_store.dart';
+import 'trailify_sync_engine.dart';
 
 class Trailify {
   static final Trailify instance = Trailify._();
@@ -9,8 +10,7 @@ class Trailify {
 
   late final TrailifyStore _store;
   late final TrailifyIdentity _identity;
-  // Sync engine will be wired in Phase 3.
-  // TrailifySyncEngine? _syncEngine;
+  TrailifySyncEngine? _syncEngine;
 
   final ValueNotifier<List<Map<String, dynamic>>> entries =
       ValueNotifier([]);
@@ -64,7 +64,13 @@ class Trailify {
     final cutoff = DateTime.now().subtract(Duration(days: localRetentionDays));
     await _store.deleteOlderThan(cutoff);
 
-    // Sync engine will be wired in Phase 3 when enableSync is true.
+    if (enableSync) {
+      _syncEngine = TrailifySyncEngine(
+        store: _store,
+        syncInterval: syncInterval,
+      );
+      _syncEngine!.start();
+    }
 
     _initialized = true;
   }
@@ -85,7 +91,7 @@ class Trailify {
   }
 
   void clearUser() {
-    // _syncEngine?.flush();
+    _syncEngine?.flush();
     _identity.clearUser();
   }
 
@@ -202,8 +208,8 @@ class Trailify {
   // ── Lifecycle ──
 
   Future<void> dispose() async {
-    // _syncEngine?.stop();
-    // await _syncEngine?.flush();
+    _syncEngine?.stop();
+    await _syncEngine?.flush();
     await _store.close();
   }
 }
