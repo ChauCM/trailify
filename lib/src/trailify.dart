@@ -8,8 +8,8 @@ class Trailify {
   static final Trailify instance = Trailify._();
   Trailify._();
 
-  late final TrailifyStore _store;
-  late final TrailifyIdentity _identity;
+  late TrailifyStore _store;
+  late TrailifyIdentity _identity;
   TrailifySyncEngine? _syncEngine;
 
   final ValueNotifier<List<Map<String, dynamic>>> entries =
@@ -28,6 +28,7 @@ class Trailify {
   String? get password => _password;
   bool get ignorePassword => _ignorePassword;
   Function(String data)? get onShare => _onShare;
+  TrailifyStore get store => _store;
 
   Future<void> init({
     required String appFlavor,
@@ -197,6 +198,38 @@ class Trailify {
         if (context != null) 'context': context,
       },
     );
+  }
+
+  // ── Testing ──
+
+  Future<void> initForTest({
+    required TrailifyStore store,
+    required TrailifyIdentity identity,
+    TrailifySyncEngine? syncEngine,
+    Set<String>? localOnlyEventTypes,
+    int memoryLimit = 500,
+  }) async {
+    if (_initialized) return;
+
+    _store = store;
+    _identity = identity;
+    _syncEngine = syncEngine;
+    _memoryLimit = memoryLimit;
+    _localOnlyEventTypes = localOnlyEventTypes ?? {};
+
+    final recent = await _store.getRecent(limit: memoryLimit);
+    entries.value = recent.map((r) => r.value).toList();
+
+    _initialized = true;
+  }
+
+  void resetForTest() {
+    _syncEngine?.stop();
+    _syncEngine = null;
+    _initialized = false;
+    entries.value = [];
+    _localOnlyEventTypes = {};
+    _memoryLimit = 500;
   }
 
   // ── Debug overlay ──

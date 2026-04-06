@@ -6,8 +6,19 @@ class TrailifyStore {
   static const _dbName = 'trailify_audit.db';
   static const _storeName = 'events';
 
+  final DatabaseFactory _dbFactory;
+  final String? _dbPath;
+
   Database? _db;
   final _store = intMapStoreFactory.store(_storeName);
+
+  TrailifyStore()
+      : _dbFactory = databaseFactoryIo,
+        _dbPath = null;
+
+  TrailifyStore.withFactory(DatabaseFactory dbFactory, String dbPath)
+      : _dbFactory = dbFactory,
+        _dbPath = dbPath;
 
   Future<Database> get db async {
     _db ??= await _openDb();
@@ -15,9 +26,12 @@ class TrailifyStore {
   }
 
   Future<Database> _openDb() async {
+    if (_dbPath != null) {
+      return _dbFactory.openDatabase(_dbPath!);
+    }
     final dir = await getApplicationDocumentsDirectory();
     final dbPath = p.join(dir.path, _dbName);
-    return databaseFactoryIo.openDatabase(dbPath);
+    return _dbFactory.openDatabase(dbPath);
   }
 
   Future<int> insert(Map<String, dynamic> entry) async {
@@ -100,7 +114,6 @@ class TrailifyStore {
     return _store.count(database);
   }
 
-  /// Find pre-auth events from the current session that have no userId.
   Future<List<RecordSnapshot<int, Map<String, dynamic>>>> findPreAuthEvents(
     String sessionId,
   ) async {
@@ -116,7 +129,6 @@ class TrailifyStore {
     );
   }
 
-  /// Backfill user identity onto pre-auth events.
   Future<void> backfillUserIdentity({
     required List<RecordSnapshot<int, Map<String, dynamic>>> records,
     required String userId,

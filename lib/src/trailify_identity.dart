@@ -15,6 +15,8 @@ class TrailifyIdentity {
   String? _platform;
   String? _firebaseProject;
 
+  String? get sessionId => _sessionId;
+
   Future<void> init({
     required String appFlavor,
     required String appVersion,
@@ -81,6 +83,20 @@ class TrailifyIdentity {
       userEmail: _userEmail,
       appId: _appId,
     );
+  }
+
+  void initForTest({
+    String deviceId = 'test-device',
+    String sessionId = 'test-session',
+    String appFlavor = 'test',
+    String appVersion = '1.0.0',
+    String platform = 'ios',
+  }) {
+    _deviceId = deviceId;
+    _sessionId = sessionId;
+    _appFlavor = appFlavor;
+    _appVersion = appVersion;
+    _platform = platform;
   }
 
   String _generateUuid() {
