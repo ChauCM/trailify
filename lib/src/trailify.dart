@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import 'console/trailify_auth_screen.dart';
 import 'trailify_identity.dart';
 import 'trailify_store.dart';
 import 'trailify_sync_engine.dart';
@@ -235,7 +236,12 @@ class Trailify {
   // ── Debug overlay ──
 
   void openConsole(BuildContext context) {
-    // Will be wired in Phase 5.
+    Navigator.of(context).push<void>(
+      MaterialPageRoute(
+        builder: (_) => const TrailifyAuthScreen(),
+        settings: const RouteSettings(name: '/trailify_auth'),
+      ),
+    );
   }
 
   // ── Lifecycle ──
