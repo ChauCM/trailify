@@ -5,6 +5,7 @@ class TrailifyOverlay extends StatelessWidget {
   const TrailifyOverlay._internal({Key? key}) : super(key: key);
 
   static void attach(BuildContext context) {
+    final overlay = Overlay.of(context);
     final entry = OverlayEntry(
       builder: (context) {
         return const TrailifyOverlay._internal();
@@ -12,7 +13,6 @@ class TrailifyOverlay extends StatelessWidget {
     );
 
     Future.delayed(kThemeAnimationDuration, () {
-      final overlay = Overlay.of(context);
       overlay.insert(entry);
     });
   }

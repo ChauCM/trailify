@@ -1,50 +1,6 @@
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
-import 'package:logarte/logarte.dart';
-import 'package:share_plus/share_plus.dart';
-
-final Logarte logarte = Logarte(
-  onShare: Share.share,
-  password: '1234',
-  onRocketDoubleTapped: (context) {
-    showDialog(
-      context: context,
-      builder: (context) {
-        return const AlertDialog(
-          title: Text(
-            'onRocketDoubleTapped',
-          ),
-          content: Text(
-            'This callback is useful when you want to quickly access some pages or perform actions without leaving the currently page (toggle theme, change language and etc.).',
-          ),
-        );
-      },
-    );
-  },
-  onRocketLongPressed: (context) {
-    showDialog(
-      context: context,
-      builder: (context) {
-        return const AlertDialog(
-          title: Text(
-            'onRocketLongPressed',
-          ),
-          content: Text(
-            'This callback is useful when you want to quickly access some pages or perform actions without leaving the currently page (toggle theme, change language and etc.).',
-          ),
-        );
-      },
-    );
-  },
-  disableAllLogs: true,
-  disableNavigationLogs: true,
-  disableDatabaseLogs: true,
-  disablePlainLogs: true,
-);
-
-enum Environment { dev, prod }
-
-const Environment environment = Environment.dev;
+import 'package:trailify/trailify.dart';
 
 void main() {
   runApp(const App());
@@ -56,16 +12,13 @@ class App extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Logarte Example',
+      title: 'Trailify Example',
       debugShowCheckedModeBanner: false,
       themeMode: ThemeMode.dark,
       theme: ThemeData(
         useMaterial3: true,
         colorSchemeSeed: Colors.blueGrey.shade900,
       ),
-      navigatorObservers: [
-        LogarteNavigatorObserver(logarte),
-      ],
       home: const HomePage(),
     );
   }
@@ -75,25 +28,48 @@ class HomePage extends StatefulWidget {
   const HomePage({super.key});
 
   @override
-  State<HomePage> createState() => HomePageState();
+  State<HomePage> createState() => _HomePageState();
 }
 
-class HomePageState extends State<HomePage> {
+class _HomePageState extends State<HomePage> {
   late final Dio _dio;
+  bool _initialized = false;
 
   @override
   void initState() {
     super.initState();
+    _initTrailify();
+  }
+
+  Future<void> _initTrailify() async {
+    await Trailify.instance.init(
+      appFlavor: 'development',
+      appVersion: '1.0.0',
+      platform: 'ios',
+      enableSync: false,
+      password: '1234',
+      ignorePassword: true,
+      localOnlyEventTypes: {'screen_viewed'},
+    );
 
     _dio = Dio()
       ..interceptors.add(
-        LogarteDioInterceptor(logarte),
+        TrailifyDioInterceptor(
+          Trailify.instance,
+          captureSuccessBodies: true,
+          excludePatterns: [RegExp(r'/health')],
+        ),
       );
 
-    logarte.attach(
-      context: context,
-      visible: false,
+    Trailify.instance.setUser(
+      userId: 'USR_100042',
+      email: 'demo@example.com',
+      appId: 'trailify_example',
     );
+
+    if (mounted) {
+      setState(() => _initialized = true);
+    }
   }
 
   @override
@@ -105,218 +81,159 @@ class HomePageState extends State<HomePage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Logarte Example'),
-      ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.symmetric(horizontal: 16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const SizedBox(height: 16),
-            GestureDetector(
-              onLongPress: () {
-                logarte.openConsole(context);
-              },
-              child: Container(
-                decoration: BoxDecoration(
-                  color: Colors.blueGrey.shade50,
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: const ListTile(
-                  leading: Icon(Icons.touch_app_rounded),
-                  title: Text('Logarte'),
-                  subtitle: Text(
-                    'Long press to open the console.',
+      appBar: AppBar(title: const Text('Trailify Example')),
+      body: !_initialized
+          ? const Center(child: CircularProgressIndicator())
+          : SingleChildScrollView(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const SizedBox(height: 16),
+                  TrailifyMagicalTap(
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: Colors.blueGrey.shade50,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: const ListTile(
+                        leading: Icon(Icons.touch_app_rounded),
+                        title: Text('Trailify Console'),
+                        subtitle:
+                            Text('Tap 10x to open, or long press below.'),
+                      ),
+                    ),
                   ),
-                ),
+                  const SizedBox(height: 8),
+                  GestureDetector(
+                    onLongPress: () {
+                      Trailify.instance.openConsole(context);
+                    },
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: Colors.blueGrey.shade50,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: const ListTile(
+                        leading: Icon(Icons.terminal),
+                        title: Text('Open Console'),
+                        subtitle: Text('Long press to open directly.'),
+                      ),
+                    ),
+                  ),
+                  const Divider(height: 40),
+                  Text('HTTP Requests',
+                      style: Theme.of(context).textTheme.titleMedium),
+                  const SizedBox(height: 12),
+                  _ActionButton(
+                    label: 'GET /posts',
+                    onPressed: () => _dio.get(
+                        'https://jsonplaceholder.typicode.com/posts'),
+                  ),
+                  _ActionButton(
+                    label: 'POST /posts',
+                    onPressed: () => _dio.post(
+                      'https://jsonplaceholder.typicode.com/posts',
+                      data: {'title': 'test', 'body': 'hello', 'userId': 1},
+                    ),
+                  ),
+                  _ActionButton(
+                    label: 'GET /404',
+                    onPressed: () async {
+                      try {
+                        await _dio.get(
+                            'https://jsonplaceholder.typicode.com/posts/9999');
+                      } catch (_) {}
+                    },
+                  ),
+                  const Divider(height: 40),
+                  Text('Manual Events',
+                      style: Theme.of(context).textTheme.titleMedium),
+                  const SizedBox(height: 12),
+                  _ActionButton(
+                    label: 'User Action',
+                    icon: Icons.touch_app,
+                    onPressed: () {
+                      Trailify.instance.userAction(
+                        action: 'tap_buy_button',
+                        context: {'productId': 42, 'price': 19.99},
+                      );
+                    },
+                  ),
+                  _ActionButton(
+                    label: 'Screen View',
+                    icon: Icons.pageview,
+                    onPressed: () {
+                      Trailify.instance.screenView(
+                        screenName: 'ProductDetail',
+                        arguments: {'productId': 42},
+                      );
+                    },
+                  ),
+                  _ActionButton(
+                    label: 'Auth Login',
+                    icon: Icons.login,
+                    onPressed: () {
+                      Trailify.instance.auth(
+                        eventType: 'auth_login',
+                        details: {'method': 'google', 'success': true},
+                      );
+                    },
+                  ),
+                  _ActionButton(
+                    label: 'Error',
+                    icon: Icons.error_outline,
+                    onPressed: () {
+                      try {
+                        throw Exception('Something went wrong');
+                      } catch (e, s) {
+                        Trailify.instance.error(
+                          error: e,
+                          stackTrace: s,
+                          context: 'example_screen',
+                        );
+                      }
+                    },
+                  ),
+                  _ActionButton(
+                    label: 'Notification',
+                    icon: Icons.notifications,
+                    onPressed: () {
+                      Trailify.instance.notification(
+                        eventType: 'notification_received',
+                        title: 'New message from John',
+                        body: 'Hey, check out this deal!',
+                        source: 'FCM',
+                      );
+                    },
+                  ),
+                  const SizedBox(height: 32),
+                ],
               ),
             ),
-            const Divider(
-              height: 40,
-            ),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'HTTP Requests',
-                  style: Theme.of(context).textTheme.titleMedium,
-                ),
-                const SizedBox(height: 12),
-                FilledButton.tonal(
-                  onPressed: () async {
-                    await _dio
-                        .get('https://jsonplaceholder.typicode.com/posts');
-                  },
-                  child: const Text('GET'),
-                ),
-                FilledButton.tonal(
-                  onPressed: () async {
-                    await _dio
-                        .post('https://jsonplaceholder.typicode.com/posts');
-                  },
-                  child: const Text('POST'),
-                ),
-                FilledButton.tonal(
-                  onPressed: () async {
-                    await _dio
-                        .put('https://jsonplaceholder.typicode.com/posts');
-                  },
-                  child: const Text('PUT'),
-                ),
-                FilledButton.tonal(
-                  onPressed: () async {
-                    await _dio
-                        .delete('https://jsonplaceholder.typicode.com/posts');
-                  },
-                  child: const Text('DELETE'),
-                ),
-              ],
-            ),
-            const Divider(
-              height: 40,
-            ),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Other logs',
-                  style: Theme.of(context).textTheme.titleMedium,
-                ),
-                const SizedBox(height: 12),
-                FilledButton.tonalIcon(
-                  onPressed: () {
-                    logarte.database(
-                      target: 'language',
-                      value: 'en',
-                      source: 'SharedPreferences',
-                    );
-                  },
-                  label: const Text('Write to database'),
-                  icon: const Icon(Icons.storage_outlined),
-                ),
-                FilledButton.tonalIcon(
-                  onPressed: () {
-                    showDialog(
-                      context: context,
-                      routeSettings: const RouteSettings(
-                        name: '/test-dialog',
-                      ),
-                      builder: (BuildContext context) {
-                        return const AlertDialog(
-                          title: Text('Dialog'),
-                          content: Text(
-                            'Opening of this dialog was logged to Logarte',
-                          ),
-                        );
-                      },
-                    );
-                  },
-                  label: const Text('Open dialog'),
-                  icon: const Icon(Icons.open_in_new),
-                ),
-                FilledButton.tonalIcon(
-                  onPressed: () {
-                    try {
-                      throw Exception('Exception');
-                    } catch (e, s) {
-                      logarte.log(e, stackTrace: s);
-                    }
-                  },
-                  label: const Text('Exception'),
-                  icon: const Icon(Icons.error_outline),
-                ),
-                FilledButton.tonalIcon(
-                  onPressed: () {
-                    logarte.log('Printed to console');
-                  },
-                  label: const Text('Plain log'),
-                  icon: const Icon(Icons.print_outlined),
-                ),
-              ],
-            ),
-          ],
-        ),
-      ),
     );
   }
 }
 
-class MyCustomTab extends StatefulWidget {
-  const MyCustomTab({super.key});
+class _ActionButton extends StatelessWidget {
+  final String label;
+  final IconData? icon;
+  final VoidCallback onPressed;
 
-  @override
-  State<MyCustomTab> createState() => _MyCustomTabState();
-}
-
-class _MyCustomTabState extends State<MyCustomTab> {
-  Environment _environment = environment;
+  const _ActionButton({
+    required this.label,
+    required this.onPressed,
+    this.icon,
+  });
 
   @override
   Widget build(BuildContext context) {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          ListTile(
-            contentPadding: EdgeInsets.zero,
-            leading: const Icon(Icons.settings_outlined),
-            title: const Text('Environment'),
-            trailing: DropdownButton<Environment>(
-              padding: EdgeInsets.zero,
-              value: _environment,
-              onChanged: (value) {
-                setState(() {
-                  _environment = value!;
-                });
-              },
-              items: Environment.values.map((e) {
-                return DropdownMenuItem(
-                  value: e,
-                  child: Text(e.name.toUpperCase()),
-                );
-              }).toList(),
-            ),
-          ),
-          ListTile(
-            contentPadding: EdgeInsets.zero,
-            leading: const Icon(Icons.notifications_outlined),
-            title: const Text('FCM token'),
-            subtitle: const Text(
-              'dJkH8Hs9_dKpQm2nLxY:APA91bGj8g_QxL3xJ2K9pQm2nLxYdJkH8Hs9_dKpQm2nLxY',
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
-            trailing: TextButton(
-              onPressed: () {},
-              child: const Text('Copy'),
-            ),
-          ),
-
-          // Cache size and clear button
-          ListTile(
-            contentPadding: EdgeInsets.zero,
-            leading: const Icon(Icons.storage_outlined),
-            title: const Text('Local cache'),
-            subtitle: const Text('100 MB'),
-            trailing: TextButton(
-              onPressed: () {},
-              child: const Text('Clear All'),
-            ),
-          ),
-
-          const SizedBox(height: 16),
-          TextField(
-            controller: TextEditingController(
-              text: 'https://api.example.com/v3/',
-            ),
-            decoration: const InputDecoration(
-              labelText: 'API URL',
-              filled: true,
-            ),
-          ),
-        ],
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: FilledButton.tonalIcon(
+        onPressed: onPressed,
+        icon: Icon(icon ?? Icons.http),
+        label: Text(label),
       ),
     );
   }

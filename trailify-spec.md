@@ -257,8 +257,18 @@ class TrailifyStore {
   static const _dbName = 'trailify_audit.db';
   static const _storeName = 'events';
 
+  final DatabaseFactory _dbFactory;
+  final String? _dbPath;
+
   Database? _db;
   final _store = intMapStoreFactory.store(_storeName);
+
+  /// Production constructor -- uses databaseFactoryIo + path_provider.
+  TrailifyStore() : _dbFactory = databaseFactoryIo, _dbPath = null;
+
+  /// Test constructor -- accepts any DatabaseFactory and a fixed path.
+  /// Use with databaseFactoryMemory for in-memory tests.
+  TrailifyStore.withFactory(this._dbFactory, this._dbPath);
 
   Future<Database> get db async {
     _db ??= await _openDb();
@@ -266,9 +276,12 @@ class TrailifyStore {
   }
 
   Future<Database> _openDb() async {
+    if (_dbPath != null) {
+      return _dbFactory.openDatabase(_dbPath!);
+    }
     final dir = await getApplicationDocumentsDirectory();
     final dbPath = p.join(dir.path, _dbName);
-    return databaseFactoryIo.openDatabase(dbPath);
+    return _dbFactory.openDatabase(dbPath);
   }
 
   /// Insert an event. Returns the record key.
@@ -402,6 +415,7 @@ class TrailifyIdentity {
   String? _firebaseProject;
 
   /// Call once on app startup, before anything else.
+  /// Uses SharedPreferences for persistent deviceId and Firebase for project detection.
   Future<void> init({
     required String appFlavor,
     required String appVersion,
@@ -423,6 +437,26 @@ class TrailifyIdentity {
       _firebaseProject = Firebase.app().options.projectId;
     } catch (_) {}
   }
+
+  /// Test-only initializer -- sets all fields directly, no SharedPreferences or Firebase needed.
+  /// Runs entirely in-memory with deterministic values.
+  void initForTest({
+    required String deviceId,
+    required String sessionId,
+    String appFlavor = 'test',
+    String appVersion = '0.0.1',
+    String platform = 'ios',
+    String? firebaseProject,
+  }) {
+    _deviceId = deviceId;
+    _sessionId = sessionId;
+    _appFlavor = appFlavor;
+    _appVersion = appVersion;
+    _platform = platform;
+    _firebaseProject = firebaseProject;
+  }
+
+  String? get sessionId => _sessionId;
 
   /// Call after successful login.
   void setUser({
@@ -867,8 +901,8 @@ class Trailify {
   static final Trailify instance = Trailify._();
   Trailify._();
 
-  late final TrailifyStore _store;
-  late final TrailifyIdentity _identity;
+  late TrailifyStore _store;
+  late TrailifyIdentity _identity;
   TrailifySyncEngine? _syncEngine;    // nullable -- null when enableSync: false
 
   /// In-memory entries for the debug overlay.
@@ -882,6 +916,9 @@ class Trailify {
   Set<String> _localOnlyEventTypes = {};
 
   bool _initialized = false;
+
+  /// Expose store for internal use (backfill, sync engine, tests).
+  TrailifyStore get store => _store;
 
   /// Initialize the audit trail.
   ///
@@ -932,6 +969,39 @@ class Trailify {
     }
 
     _initialized = true;
+  }
+
+  /// Test-only initializer -- accepts pre-built dependencies, no platform plugins needed.
+  ///
+  /// Use with TrailifyStore.withFactory(databaseFactoryMemory, 'test.db')
+  /// and TrailifyIdentity().initForTest(...) in scenario tests.
+  /// This bypasses SharedPreferences, path_provider, and Firebase entirely.
+  Future<void> initForTest({
+    required TrailifyStore store,
+    required TrailifyIdentity identity,
+    TrailifySyncEngine? syncEngine,
+    Set<String>? localOnlyEventTypes,
+    int memoryLimit = 500,
+  }) async {
+    if (_initialized) return;
+
+    _memoryLimit = memoryLimit;
+    _localOnlyEventTypes = localOnlyEventTypes ?? {};
+    _store = store;
+    _identity = identity;
+    _syncEngine = syncEngine;
+
+    final recent = await _store.getRecent(limit: memoryLimit);
+    entries.value = recent.map((r) => r.value).toList();
+
+    _initialized = true;
+  }
+
+  /// Reset the singleton state. Test-only -- allows re-initialization between tests.
+  void resetForTest() {
+    _syncEngine?.stop();
+    _initialized = false;
+    entries.value = [];
   }
 
   // ── Identity ──
@@ -1517,7 +1587,15 @@ dependencies:
   uuid: ^4.5.1
   cloud_firestore: ^6.1.2
   firebase_core: ^4.4.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^2.0.0
+  fake_cloud_firestore: ^4.0.0
 ```
+
+Sembast already includes `databaseFactoryMemory` in `package:sembast/sembast_memory.dart` -- no extra test package needed. `SharedPreferences` supports `SharedPreferences.setMockInitialValues({})` out of the box in Flutter test.
 
 ### Host app
 
@@ -1572,6 +1650,168 @@ Sync only: `api_error`, `notification_*`, `auth_*`, `user_action`, `error`
 | Sync everything | ~$20-22 |
 | Conservative sync (errors + notifications + actions + auth) | ~$8-10 |
 | Minimal sync (errors + notifications only) | ~$3-5 |
+
+## Testability
+
+### Design Principle
+
+All core components accept injected dependencies so the full data pipeline can be exercised in `flutter test` without a device, emulator, or network. Production code uses the default constructors (which hardcode platform plugins). Test code uses the `*ForTest` constructors with in-memory replacements.
+
+The testing approach is **scenario-based integration testing** -- not unit testing. Each test exercises a real user scenario through the actual data pipeline (event creation -> local storage -> sync to Firestore) using in-memory fakes that behave like the real databases.
+
+### Why This Approach
+
+- **Covers the big picture**: tests verify the full pipeline, not isolated methods
+- **Replicates user-facing issues**: test scenarios map to real debugging scenarios ("message disappeared", "notification not received", "pre-auth events lost")
+- **Easy for AI to run**: `flutter test` runs in seconds, clear pass/fail, no device needed
+- **Real database behavior**: Sembast `databaseFactoryMemory` and `FakeFirebaseFirestore` implement the real APIs with real query/filter/sort behavior -- not hand-rolled mocks
+
+### Testing Stack
+
+| Dependency | Production | Test Replacement |
+|---|---|---|
+| Sembast (local DB) | `databaseFactoryIo` + `path_provider` | `databaseFactoryMemory` from `package:sembast/sembast_memory.dart` |
+| Firestore (cloud sync) | `FirebaseFirestore.instance` | `FakeFirebaseFirestore()` from `package:fake_cloud_firestore` |
+| SharedPreferences (device ID) | `SharedPreferences.getInstance()` | Bypassed via `TrailifyIdentity.initForTest()` |
+| Firebase Core (project ID) | `Firebase.app().options.projectId` | Bypassed via `TrailifyIdentity.initForTest()` |
+
+### Injection Points
+
+**`TrailifyStore`**: Two constructors.
+
+```dart
+// Production (used by Trailify.init)
+final store = TrailifyStore();
+
+// Test (used by Trailify.initForTest)
+final store = TrailifyStore.withFactory(databaseFactoryMemory, 'test.db');
+```
+
+**`TrailifyIdentity`**: Two init methods.
+
+```dart
+// Production
+final identity = TrailifyIdentity();
+await identity.init(appFlavor: 'prod', appVersion: '1.0.0', platform: 'ios');
+
+// Test -- sets all fields directly, no SharedPreferences or Firebase
+final identity = TrailifyIdentity();
+identity.initForTest(deviceId: 'test-device-1', sessionId: 'test-session-1');
+```
+
+**`TrailifySyncEngine`**: Already accepts `FirebaseFirestore?` in constructor -- pass `FakeFirebaseFirestore()`.
+
+```dart
+final fakeFirestore = FakeFirebaseFirestore();
+final syncEngine = TrailifySyncEngine(
+  store: store,
+  firestore: fakeFirestore,
+  syncInterval: Duration.zero,  // disable timer in tests, call sync() directly
+);
+```
+
+**`Trailify`**: Two init methods.
+
+```dart
+// Production
+await Trailify.instance.init(appFlavor: 'prod', appVersion: '1.0.0', platform: 'ios');
+
+// Test -- inject all dependencies, no platform plugins
+await Trailify.instance.initForTest(
+  store: store,
+  identity: identity,
+  syncEngine: syncEngine,  // optional, null to test without sync
+  localOnlyEventTypes: {'screen_viewed'},
+);
+
+// Between tests
+Trailify.instance.resetForTest();
+```
+
+### Scenario Test Structure
+
+Tests live in `test/` at the package root. Each file covers a layer of the pipeline, building from bottom (store) to top (full integration).
+
+```
+test/
+  trailify_store_test.dart           # local storage scenarios
+  trailify_dio_interceptor_test.dart # HTTP capture + scrubbing scenarios
+  trailify_sync_engine_test.dart     # Sembast -> Firestore sync scenarios
+  trailify_integration_test.dart     # full pipeline end-to-end scenarios
+```
+
+**`trailify_store_test.dart`** -- exercises the local storage layer with a real in-memory Sembast database:
+- Events persist across reads (insert, read back, verify structure and order)
+- Pending events are queryable for sync (mix of pending/localOnly/synced, verify getPendingSync only returns pending)
+- Retention policy deletes old events (insert events with old timestamps, run deleteOlderThan, verify count)
+- Mark synced updates status (insert pending, mark synced, verify they leave getPendingSync)
+- Pre-auth backfill updates userId (insert events with null userId, run backfillUserIdentity, verify userId set)
+
+**`trailify_dio_interceptor_test.dart`** -- exercises the Dio interceptor by feeding it real Dio requests and verifying the events that come out:
+- Successful GET produces api_request event with method, url, statusCode, durationMs
+- Failed POST produces api_error event with error and errorType
+- Sensitive headers are redacted (Authorization -> [REDACTED])
+- Sensitive body fields are redacted (password -> [REDACTED])
+- Excluded URL patterns produce no events
+- Body capture respects captureSuccessBodies flag
+- alwaysCaptureBodyPatterns overrides the default
+- Large bodies are truncated at maxBodySize
+
+**`trailify_sync_engine_test.dart`** -- exercises sync from Sembast to Firestore using FakeFirebaseFirestore:
+- Pending events sync to Firestore (insert pending, run sync(), verify docs in FakeFirebaseFirestore)
+- Synced events are marked locally (after sync, verify syncStatus: 'synced' in Sembast)
+- Idempotent sync (sync same events twice, verify no duplicate docs -- eventId = doc ID)
+- localOnly events never sync (insert localOnly, run sync, verify Firestore empty)
+- syncStatus field is stripped from Firestore doc
+- Timestamp is converted to Firestore Timestamp (not String)
+- expiresAt = event time + 90 days
+
+**`trailify_integration_test.dart`** -- end-to-end scenarios through the full Trailify class:
+- Full audit trail for "message send" (init, set user, log userAction, simulate Dio POST, verify both events in store with correct userId, sync to Firestore, verify Firestore docs)
+- Pre-auth events get backfilled (init, log events with no user, set user, verify old events now have userId)
+- localOnly event types stay local (configure localOnlyEventTypes, log screen_viewed, sync, verify never in Firestore)
+- clearUser flushes pending events (set user, log events, clearUser, verify sync attempted)
+- In-memory list is capped at memoryLimit (log more than limit, verify entries.value.length does not exceed)
+
+### Test Helper Pattern
+
+Each test file uses the same setup pattern:
+
+```dart
+import 'package:flutter_test/flutter_test.dart';
+import 'package:sembast/sembast.dart';
+import 'package:sembast/sembast_memory.dart';
+import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
+
+late TrailifyStore store;
+late TrailifyIdentity identity;
+late FakeFirebaseFirestore fakeFirestore;
+
+setUp(() async {
+  // Fresh in-memory Sembast for each test
+  store = TrailifyStore.withFactory(
+    newDatabaseFactoryMemory(),
+    'test.db',
+  );
+
+  // Identity with deterministic test values
+  identity = TrailifyIdentity();
+  identity.initForTest(
+    deviceId: 'test-device-001',
+    sessionId: 'test-session-001',
+  );
+
+  // Fresh in-memory Firestore for each test
+  fakeFirestore = FakeFirebaseFirestore();
+
+  // Reset the singleton between tests
+  Trailify.instance.resetForTest();
+});
+
+tearDown(() async {
+  await store.close();
+});
+```
 
 ## Summary: What Gets Built
 
