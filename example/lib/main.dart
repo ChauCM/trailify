@@ -75,6 +75,7 @@ class _HomePageState extends State<HomePage> {
   @override
   void dispose() {
     _dio.close();
+    Trailify.instance.dispose();
     super.dispose();
   }
 

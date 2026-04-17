@@ -42,12 +42,13 @@ class TrailifySyncEngine {
     if (_isSyncing) return;
     _isSyncing = true;
 
+    final keys = <int>[];
+
     try {
       final pendingRecords = await _store.getPendingSync(limit: 500);
       if (pendingRecords.isEmpty) return;
 
       final batch = _firestore.batch();
-      final keys = <int>[];
 
       for (final record in pendingRecords) {
         final doc = Map<String, dynamic>.from(record.value);
@@ -81,6 +82,9 @@ class TrailifySyncEngine {
       await _store.markSynced(keys);
     } catch (e) {
       debugPrint('TrailifySyncEngine: sync failed: $e');
+      if (keys.isNotEmpty) {
+        await _store.markFailed(keys);
+      }
     } finally {
       _isSyncing = false;
     }

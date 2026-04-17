@@ -23,9 +23,8 @@ class TrailifyDioInterceptor extends Interceptor {
   static const _sensitiveBodyFields = {
     'password',
     'token',
-    'refreshToken',
     'refreshtoken',
-    'accessToken',
+    'accesstoken',
     'secret',
     'base64',
   };
@@ -126,9 +125,14 @@ class TrailifyDioInterceptor extends Interceptor {
         if (_sensitiveBodyFields.contains(key.toString().toLowerCase())) {
           return MapEntry(key, '[REDACTED]');
         }
-        if (value is Map) return MapEntry(key, _scrubBody(value));
+        if (value is Map || value is List) {
+          return MapEntry(key, _scrubBody(value));
+        }
         return MapEntry(key, value);
       });
+    }
+    if (body is List) {
+      return body.map(_scrubBody).toList();
     }
     return body;
   }

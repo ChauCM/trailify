@@ -25,7 +25,7 @@ void main() {
     await store.close();
   });
 
-  Map<String, dynamic> _makeEvent({
+  Map<String, dynamic> makeEvent({
     required String eventId,
     String syncStatus = 'pending',
     DateTime? timestamp,
@@ -43,8 +43,8 @@ void main() {
   }
 
   test('pending events sync to Firestore', () async {
-    await store.insert(_makeEvent(eventId: 'evt-1'));
-    await store.insert(_makeEvent(eventId: 'evt-2'));
+    await store.insert(makeEvent(eventId: 'evt-1'));
+    await store.insert(makeEvent(eventId: 'evt-2'));
 
     await syncEngine.sync();
 
@@ -55,7 +55,7 @@ void main() {
   });
 
   test('synced events are marked locally', () async {
-    await store.insert(_makeEvent(eventId: 'evt-1'));
+    await store.insert(makeEvent(eventId: 'evt-1'));
 
     await syncEngine.sync();
 
@@ -68,12 +68,12 @@ void main() {
   });
 
   test('idempotent sync produces no duplicate docs', () async {
-    await store.insert(_makeEvent(eventId: 'evt-1'));
+    await store.insert(makeEvent(eventId: 'evt-1'));
 
     await syncEngine.sync();
 
     // Insert same eventId again as a new pending record
-    await store.insert(_makeEvent(eventId: 'evt-1'));
+    await store.insert(makeEvent(eventId: 'evt-1'));
 
     await syncEngine.sync();
 
@@ -84,7 +84,7 @@ void main() {
 
   test('localOnly events never sync', () async {
     await store.insert(
-      _makeEvent(eventId: 'evt-local', syncStatus: 'localOnly'),
+      makeEvent(eventId: 'evt-local', syncStatus: 'localOnly'),
     );
 
     await syncEngine.sync();
@@ -94,7 +94,7 @@ void main() {
   });
 
   test('syncStatus field is stripped from Firestore doc', () async {
-    await store.insert(_makeEvent(eventId: 'evt-1'));
+    await store.insert(makeEvent(eventId: 'evt-1'));
 
     await syncEngine.sync();
 
@@ -105,7 +105,7 @@ void main() {
 
   test('timestamp is converted to Firestore Timestamp', () async {
     final eventTime = DateTime.utc(2026, 4, 15, 10, 30, 0);
-    await store.insert(_makeEvent(eventId: 'evt-1', timestamp: eventTime));
+    await store.insert(makeEvent(eventId: 'evt-1', timestamp: eventTime));
 
     await syncEngine.sync();
 
@@ -119,7 +119,7 @@ void main() {
 
   test('expiresAt is event time + 90 days', () async {
     final eventTime = DateTime.utc(2026, 4, 15, 10, 30, 0);
-    await store.insert(_makeEvent(eventId: 'evt-1', timestamp: eventTime));
+    await store.insert(makeEvent(eventId: 'evt-1', timestamp: eventTime));
 
     await syncEngine.sync();
 

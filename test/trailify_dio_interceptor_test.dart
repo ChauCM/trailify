@@ -108,6 +108,25 @@ void main() {
     expect(body['token'], '[REDACTED]');
   });
 
+  test('accessToken field is redacted regardless of case', () async {
+    dio.interceptors.add(TrailifyDioInterceptor(
+      Trailify.instance,
+      captureSuccessBodies: true,
+    ));
+    dio.httpClientAdapter = _SuccessAdapter(200, {});
+
+    await dio.post('/api/v1/token', data: {
+      'accessToken': 'eyJhbGciOi...',
+      'refreshToken': 'dGhpcyBpcyBh...',
+    });
+    await _waitForLog();
+
+    final payload = Trailify.instance.entries.value.first['payload'] as Map;
+    final body = payload['requestBody'] as Map;
+    expect(body['accessToken'], '[REDACTED]');
+    expect(body['refreshToken'], '[REDACTED]');
+  });
+
   test('excluded URL patterns produce no events', () async {
     dio.interceptors.add(TrailifyDioInterceptor(
       Trailify.instance,
