@@ -4,6 +4,121 @@ Offline-first audit trail for Flutter apps with Firestore sync. Capture API call
 
 **Primary use case**: When a user reports "my message disappeared" or "I didn't receive a notification," query Firestore by their user ID and see exactly what happened, step by step.
 
+## What You'll See in Firestore
+
+A user reports "I sent a message but it disappeared." You query `event_logs` where `userId == "USR_100042"` ordered by `timestamp DESC`:
+
+| Time | Event | Key Detail |
+|------|-------|------------|
+| 14:35:22 | `notification_received` | Push arrived 3 minutes late |
+| 14:32:01 | `api_error` | POST /conversation/message -- 504 gateway timeout, 30s |
+| 14:32:01 | `user_action` | Tapped send (message length: 156) |
+
+**Verdict**: The message POST timed out at the gateway (504). The server eventually processed it (notification came through), but the client never got a success response. The "disappeared" message was actually sent.
+
+<details>
+<summary>Full Firestore documents for this timeline</summary>
+
+**Document: `event_logs/3f7a91c2-...`** -- user tapped send
+
+```json
+{
+  "eventId": "3f7a91c2-8b4e-4d1f-a9c3-2e5f8d1b7a04",
+  "eventType": "user_action",
+  "userId": "USR_100042",
+  "userEmail": "jane@example.com",
+  "appId": "app_one",
+  "deviceId": "d4e5f6a7-...",
+  "sessionId": "s9a8b7c6-...",
+  "appFlavor": "prod",
+  "platform": "ios",
+  "appVersion": "1.22.9",
+  "firebaseProject": "my-project-prod",
+  "timestamp": "2026-04-27T14:32:01.000Z",
+  "expiresAt": "2026-07-26T14:32:01.000Z",
+  "payload": {
+    "action": "send_message",
+    "conversationId": 42,
+    "textLength": 156
+  }
+}
+```
+
+**Document: `event_logs/8c2d4e6f-...`** -- the API call that followed
+
+```json
+{
+  "eventId": "8c2d4e6f-1a3b-5c7d-9e0f-2a4b6c8d0e1f",
+  "eventType": "api_error",
+  "userId": "USR_100042",
+  "userEmail": "jane@example.com",
+  "appId": "app_one",
+  "deviceId": "d4e5f6a7-...",
+  "sessionId": "s9a8b7c6-...",
+  "appFlavor": "prod",
+  "platform": "ios",
+  "appVersion": "1.22.9",
+  "firebaseProject": "my-project-prod",
+  "timestamp": "2026-04-27T14:32:01.450Z",
+  "expiresAt": "2026-07-26T14:32:01.450Z",
+  "payload": {
+    "method": "POST",
+    "url": "/api/v1/conversation/message",
+    "baseUrl": "https://api.example.com",
+    "requestHeaders": {
+      "Authorization": "[REDACTED]",
+      "Content-Type": "application/json"
+    },
+    "requestBody": { "text": "Hey, are we still on for Friday?", "conversationId": 42 },
+    "statusCode": 504,
+    "responseBody": "{\"error\":\"gateway_timeout\"}",
+    "durationMs": 30012,
+    "error": "DioException [connection timeout]: The request connection took longer than 30000ms",
+    "errorType": "connectionTimeout"
+  }
+}
+```
+
+**Document: `event_logs/a1b2c3d4-...`** -- notification that arrived later
+
+```json
+{
+  "eventId": "a1b2c3d4-5e6f-7a8b-9c0d-1e2f3a4b5c6d",
+  "eventType": "notification_received",
+  "userId": "USR_100042",
+  "userEmail": "jane@example.com",
+  "appId": "app_one",
+  "deviceId": "d4e5f6a7-...",
+  "sessionId": "s9a8b7c6-...",
+  "appFlavor": "prod",
+  "platform": "ios",
+  "appVersion": "1.22.9",
+  "firebaseProject": "my-project-prod",
+  "timestamp": "2026-04-27T14:35:22.000Z",
+  "expiresAt": "2026-07-26T14:35:22.000Z",
+  "payload": {
+    "messageId": "0:1682602522%a1b2c3d4f5e6",
+    "title": "New message from Tom",
+    "body": "Hey, are we still on for Friday?",
+    "topic": "/topics/conversation_42",
+    "source": "foreground"
+  }
+}
+```
+
+</details>
+
+Documents auto-expire after 90 days via the `expiresAt` TTL field.
+
+### Querying Tips
+
+```
+userId == "USR_100042"                              → all events for a user
+userEmail == "jane@example.com"                     → across apps
+deviceId == "d4e5f6a7-..."                          → pre-auth issues
+userId == "USR_100042" AND eventType == "api_error" → just API failures
+```
+
 ## Features
 
 - **Local-first** -- events are stored in Sembast and survive app restarts, offline periods, and crashes
@@ -154,7 +269,8 @@ Trailify Core
   └── Sembast DB (persistent)
         │
         ▼
-      Sync Engine ──▶ Cloud Firestore
+      Sync Engine ──▶ Cloud Firestore (event_logs collection)
+                       └── TTL auto-delete after 90 days
 ```
 
 ## License
