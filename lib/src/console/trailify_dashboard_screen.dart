@@ -17,6 +17,7 @@ class _TrailifyDashboardScreenState extends State<TrailifyDashboardScreen> {
   static const _tabs = <_TabDef>[
     _TabDef('All', Icons.list_alt_rounded, null),
     _TabDef('API', Icons.public, _apiFilter),
+    _TabDef('Navigation', Icons.navigation_rounded, _navigationFilter),
     _TabDef('Notifications', Icons.notifications_rounded, _notificationFilter),
     _TabDef('Actions', Icons.touch_app_rounded, _actionFilter),
     _TabDef('Auth', Icons.lock_rounded, _authFilter),
@@ -25,9 +26,9 @@ class _TrailifyDashboardScreenState extends State<TrailifyDashboardScreen> {
 
   static bool _apiFilter(String t) =>
       t == 'api_request' || t == 'api_error';
+  static bool _navigationFilter(String t) => t == 'screen_viewed';
   static bool _notificationFilter(String t) => t.startsWith('notification_');
-  static bool _actionFilter(String t) =>
-      t == 'user_action' || t == 'screen_viewed';
+  static bool _actionFilter(String t) => t == 'user_action';
   static bool _authFilter(String t) => t.startsWith('auth_');
   static bool _errorFilter(String t) => t == 'error';
 

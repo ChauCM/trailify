@@ -8,6 +8,7 @@ environment:
   sdk: '>=3.0.2 <4.0.0'
 
 dependencies:
+  auto_route: ^11.1.0
   dio: ^5.3.0
   flutter:
     sdk: flutter
@@ -15,6 +16,8 @@ dependencies:
     path: ../
 
 dev_dependencies:
+  auto_route_generator: ^10.5.0
+  build_runner: ^2.4.0
   flutter_test:
     sdk: flutter
   flutter_lints: ^2.0.0
