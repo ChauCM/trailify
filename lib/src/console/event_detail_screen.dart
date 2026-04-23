@@ -21,8 +21,10 @@ class EventDetailScreen extends StatelessWidget {
           actions: [
             IconButton(
               icon: const Icon(Icons.copy),
+              tooltip: 'Copy JSON',
               onPressed: () {
-                final text = const JsonEncoder.withIndent('  ').convert(event);
+                final text =
+                    const JsonEncoder.withIndent('  ').convert(event);
                 Clipboard.setData(ClipboardData(text: text));
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(content: Text('Copied to clipboard')),
@@ -37,7 +39,7 @@ class EventDetailScreen extends StatelessWidget {
             const _SectionHeader('Event Info'),
             _KeyValue('eventType', eventType),
             _KeyValue('eventId', event['eventId']),
-            _KeyValue('timestamp', event['timestamp']),
+            _TimestampRow(event: event),
             _KeyValue('syncStatus', event['syncStatus']),
             const SizedBox(height: 16),
             const _SectionHeader('Identity'),
@@ -51,13 +53,201 @@ class EventDetailScreen extends StatelessWidget {
             _KeyValue('appVersion', event['appVersion']),
             const SizedBox(height: 16),
             const _SectionHeader('Payload'),
-            ...payload.entries.map((e) => _KeyValue(e.key, e.value)),
+            ...payload.entries.map((e) {
+              if (e.value is Map || e.value is List) {
+                return _CollapsibleJsonField(label: e.key, value: e.value);
+              }
+              return _KeyValue(e.key, e.value);
+            }),
           ],
         ),
       ),
     );
   }
 }
+
+// ── Dual timestamp row ──
+
+class _TimestampRow extends StatelessWidget {
+  final Map<String, dynamic> event;
+
+  const _TimestampRow({required this.event});
+
+  @override
+  Widget build(BuildContext context) {
+    final utcTs = event['timestamp'] as String?;
+    final localTs = event['localTimestamp'] as String?;
+    final tzOffset = event['timezoneOffset'];
+    final tzName = event['timezoneName'] as String?;
+
+    String utcDisplay = utcTs ?? '—';
+    String localDisplay = '—';
+
+    if (localTs != null && localTs.isNotEmpty) {
+      try {
+        final dt = DateTime.parse(localTs);
+        localDisplay = _formatFull(dt);
+        if (tzName != null) {
+          final offsetStr = _formatOffset(tzOffset is int ? tzOffset : 0);
+          localDisplay += ' $tzName ($offsetStr)';
+        }
+      } catch (_) {
+        localDisplay = localTs;
+      }
+    } else if (utcTs != null && utcTs.isNotEmpty) {
+      try {
+        final dt = DateTime.parse(utcTs).toLocal();
+        localDisplay = _formatFull(dt);
+      } catch (_) {}
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _KeyValue('timestamp (UTC)', utcDisplay),
+        _KeyValue('timestamp (local)', localDisplay),
+      ],
+    );
+  }
+
+  static String _formatFull(DateTime dt) {
+    const months = [
+      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
+    ];
+    return '${months[dt.month - 1]} ${dt.day}, ${dt.year} '
+        '${dt.hour.toString().padLeft(2, '0')}:'
+        '${dt.minute.toString().padLeft(2, '0')}:'
+        '${dt.second.toString().padLeft(2, '0')}';
+  }
+
+  static String _formatOffset(int minutes) {
+    final sign = minutes >= 0 ? '+' : '-';
+    final abs = minutes.abs();
+    final h = abs ~/ 60;
+    final m = abs % 60;
+    return 'UTC$sign${h.toString().padLeft(2, '0')}:${m.toString().padLeft(2, '0')}';
+  }
+}
+
+// ── Collapsible JSON tree ──
+
+class _CollapsibleJsonField extends StatefulWidget {
+  final String label;
+  final dynamic value;
+
+  const _CollapsibleJsonField({required this.label, required this.value});
+
+  @override
+  State<_CollapsibleJsonField> createState() => _CollapsibleJsonFieldState();
+}
+
+class _CollapsibleJsonFieldState extends State<_CollapsibleJsonField> {
+  bool _expanded = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final preview = widget.value is Map
+        ? '{${(widget.value as Map).length} fields}'
+        : '[${(widget.value as List).length} items]';
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        InkWell(
+          onTap: () => setState(() => _expanded = !_expanded),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 4),
+            child: Row(
+              children: [
+                SizedBox(
+                  width: 120,
+                  child: Text(
+                    widget.label,
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Colors.grey.shade600,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ),
+                Icon(
+                  _expanded ? Icons.expand_less : Icons.expand_more,
+                  size: 16,
+                  color: Colors.grey,
+                ),
+                const SizedBox(width: 4),
+                Expanded(
+                  child: Text(
+                    preview,
+                    style: TextStyle(fontSize: 12, color: Colors.grey[500]),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+        if (_expanded)
+          Container(
+            margin: const EdgeInsets.only(left: 16, bottom: 8),
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: Colors.grey.withValues(alpha: 0.06),
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: Colors.grey.withValues(alpha: 0.15)),
+            ),
+            child: widget.value is Map
+                ? _JsonMapView(data: widget.value as Map<String, dynamic>)
+                : _JsonListView(data: widget.value as List),
+          ),
+      ],
+    );
+  }
+}
+
+class _JsonMapView extends StatelessWidget {
+  final Map<String, dynamic> data;
+  const _JsonMapView({required this.data});
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: data.entries.map((e) {
+        if (e.value is Map || e.value is List) {
+          return Padding(
+            padding: const EdgeInsets.only(left: 4),
+            child: _CollapsibleJsonField(label: e.key, value: e.value),
+          );
+        }
+        return _KeyValue(e.key, e.value);
+      }).toList(),
+    );
+  }
+}
+
+class _JsonListView extends StatelessWidget {
+  final List data;
+  const _JsonListView({required this.data});
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: data.asMap().entries.map((e) {
+        if (e.value is Map || e.value is List) {
+          return Padding(
+            padding: const EdgeInsets.only(left: 4),
+            child: _CollapsibleJsonField(label: '[${e.key}]', value: e.value),
+          );
+        }
+        return _KeyValue('[${e.key}]', e.value);
+      }).toList(),
+    );
+  }
+}
+
+// ── Shared widgets ──
 
 class _SectionHeader extends StatelessWidget {
   final String title;
@@ -118,7 +308,7 @@ class _KeyValue extends StatelessWidget {
             ),
           ),
           Expanded(
-            child: Text(
+            child: SelectableText(
               display,
               style: const TextStyle(fontSize: 13),
             ),

@@ -56,6 +56,7 @@ class TrailifyIdentity {
   }
 
   Map<String, dynamic> envelope({String syncStatus = 'pending'}) {
+    final now = DateTime.now();
     return {
       'eventId': _generateUuid(),
       'deviceId': _deviceId,
@@ -67,7 +68,10 @@ class TrailifyIdentity {
       'appVersion': _appVersion,
       'sessionId': _sessionId,
       'firebaseProject': _firebaseProject,
-      'timestamp': DateTime.now().toUtc().toIso8601String(),
+      'timestamp': now.toUtc().toIso8601String(),
+      'localTimestamp': now.toIso8601String(),
+      'timezoneOffset': now.timeZoneOffset.inMinutes,
+      'timezoneName': now.timeZoneName,
       'syncStatus': syncStatus,
     };
   }
