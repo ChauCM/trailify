@@ -1,3 +1,6 @@
+import 'dart:io';
+
+import 'package:device_info_plus/device_info_plus.dart';
 import 'package:flutter/material.dart';
 import 'package:trailify/trailify.dart';
 
@@ -25,14 +28,17 @@ class _AppState extends State<App> {
   }
 
   Future<void> _initTrailify() async {
+    final deviceInfo = await _gatherDeviceInfo();
+
     await Trailify.instance.init(
       appFlavor: 'development',
       appVersion: '1.0.0',
-      platform: 'ios',
+      platform: Platform.isIOS ? 'ios' : 'android',
       enableSync: false,
       password: '1234',
       ignorePassword: true,
       localOnlyEventTypes: {'screen_viewed'},
+      deviceInfo: deviceInfo,
     );
 
     Trailify.instance.setUser(
@@ -44,6 +50,29 @@ class _AppState extends State<App> {
     _seedDemoEvents();
 
     if (mounted) setState(() => _initialized = true);
+  }
+
+  Future<Map<String, dynamic>> _gatherDeviceInfo() async {
+    final plugin = DeviceInfoPlugin();
+    if (Platform.isIOS) {
+      final ios = await plugin.iosInfo;
+      return {
+        'model': ios.utsname.machine,
+        'brand': 'Apple',
+        'osVersion': 'iOS ${ios.systemVersion}',
+        'isPhysicalDevice': ios.isPhysicalDevice,
+        'locale': Platform.localeName,
+      };
+    } else {
+      final android = await plugin.androidInfo;
+      return {
+        'model': android.model,
+        'brand': android.brand,
+        'osVersion': 'Android ${android.version.release}',
+        'isPhysicalDevice': android.isPhysicalDevice,
+        'locale': Platform.localeName,
+      };
+    }
   }
 
   void _seedDemoEvents() {

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'console/trailify_auth_screen.dart';
+import 'trailify_device_profile.dart';
 import 'trailify_identity.dart';
 import 'trailify_store.dart';
 import 'trailify_sync_engine.dart';
@@ -12,6 +13,7 @@ class Trailify {
   late TrailifyStore _store;
   late TrailifyIdentity _identity;
   TrailifySyncEngine? _syncEngine;
+  TrailifyDeviceProfile? _deviceProfile;
 
   final ValueNotifier<List<Map<String, dynamic>>> entries =
       ValueNotifier([]);
@@ -30,6 +32,7 @@ class Trailify {
   bool get ignorePassword => _ignorePassword;
   Function(String data)? get onShare => _onShare;
   TrailifyStore get store => _store;
+  TrailifyDeviceProfile? get deviceProfile => _deviceProfile;
 
   Future<void> init({
     required String appFlavor,
@@ -43,6 +46,7 @@ class Trailify {
     String? password,
     bool ignorePassword = true,
     Function(String data)? onShare,
+    Map<String, dynamic>? deviceInfo,
   }) async {
     if (_initialized) return;
 
@@ -72,6 +76,20 @@ class Trailify {
         syncInterval: syncInterval,
       );
       _syncEngine!.start();
+    }
+
+    if (deviceInfo != null && _identity.deviceId != null) {
+      _deviceProfile = TrailifyDeviceProfile(
+        deviceId: _identity.deviceId!,
+        sessionId: _identity.sessionId!,
+        info: deviceInfo,
+        appVersion: appVersion,
+        appFlavor: appFlavor,
+      );
+      await _deviceProfile!.save(_store);
+      if (enableSync) {
+        _deviceProfile!.syncToFirestore(_syncEngine?.firestore);
+      }
     }
 
     _initialized = true;

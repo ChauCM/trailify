@@ -10,6 +10,8 @@ class TrailifySyncEngine {
   final FirebaseFirestore _firestore;
   final String _collection;
 
+  FirebaseFirestore get firestore => _firestore;
+
   Timer? _syncTimer;
   bool _isSyncing = false;
 

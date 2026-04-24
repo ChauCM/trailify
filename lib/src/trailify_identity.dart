@@ -15,6 +15,7 @@ class TrailifyIdentity {
   String? _platform;
   String? _firebaseProject;
 
+  String? get deviceId => _deviceId;
   String? get sessionId => _sessionId;
 
   Future<void> init({

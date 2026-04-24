@@ -2,6 +2,8 @@ import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import '../trailify.dart';
+import '../trailify_device_profile.dart';
 import 'trailify_theme_wrapper.dart';
 
 class EventDetailScreen extends StatelessWidget {
@@ -52,6 +54,7 @@ class EventDetailScreen extends StatelessWidget {
             _KeyValue('platform', event['platform']),
             _KeyValue('appVersion', event['appVersion']),
             const SizedBox(height: 16),
+            _DeviceSection(deviceId: event['deviceId'] as String?),
             const _SectionHeader('Payload'),
             ...payload.entries.map((e) {
               if (e.value is Map || e.value is List) {
@@ -243,6 +246,66 @@ class _JsonListView extends StatelessWidget {
         }
         return _KeyValue('[${e.key}]', e.value);
       }).toList(),
+    );
+  }
+}
+
+// ── Device section ──
+
+class _DeviceSection extends StatefulWidget {
+  final String? deviceId;
+
+  const _DeviceSection({required this.deviceId});
+
+  @override
+  State<_DeviceSection> createState() => _DeviceSectionState();
+}
+
+class _DeviceSectionState extends State<_DeviceSection> {
+  Map<String, dynamic>? _profile;
+  bool _loaded = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadProfile();
+  }
+
+  Future<void> _loadProfile() async {
+    if (widget.deviceId == null) {
+      setState(() => _loaded = true);
+      return;
+    }
+    try {
+      final profile = await TrailifyDeviceProfile.getLocal(
+        Trailify.instance.store,
+        widget.deviceId!,
+      );
+      if (mounted) setState(() { _profile = profile; _loaded = true; });
+    } catch (_) {
+      if (mounted) setState(() => _loaded = true);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (!_loaded || _profile == null) return const SizedBox.shrink();
+
+    final display = [
+      'model', 'brand', 'osVersion', 'isPhysicalDevice',
+      'screenWidth', 'screenHeight', 'pixelRatio',
+      'locale', 'country',
+    ];
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const _SectionHeader('Device'),
+        ...display
+            .where((k) => _profile!.containsKey(k) && _profile![k] != null)
+            .map((k) => _KeyValue(k, _profile![k])),
+        const SizedBox(height: 16),
+      ],
     );
   }
 }
