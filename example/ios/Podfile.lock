@@ -1198,6 +1198,8 @@ PODS:
     - Firebase/Firestore (= 12.12.0)
     - firebase_core
     - Flutter
+  - device_info_plus (0.0.1):
+    - Flutter
   - Firebase/CoreOnly (12.12.0):
     - FirebaseCore (~> 12.12.0)
   - Firebase/Firestore (12.12.0):
@@ -1352,6 +1354,7 @@ PODS:
 
 DEPENDENCIES:
   - cloud_firestore (from `.symlinks/plugins/cloud_firestore/ios`)
+  - device_info_plus (from `.symlinks/plugins/device_info_plus/ios`)
   - firebase_core (from `.symlinks/plugins/firebase_core/ios`)
   - Flutter (from `Flutter`)
   - path_provider_foundation (from `.symlinks/plugins/path_provider_foundation/darwin`)
@@ -1378,6 +1381,8 @@ SPEC REPOS:
 EXTERNAL SOURCES:
   cloud_firestore:
     :path: ".symlinks/plugins/cloud_firestore/ios"
+  device_info_plus:
+    :path: ".symlinks/plugins/device_info_plus/ios"
   firebase_core:
     :path: ".symlinks/plugins/firebase_core/ios"
   Flutter:
@@ -1391,6 +1396,7 @@ SPEC CHECKSUMS:
   abseil: a05cc83bf02079535e17169a73c5be5ba47f714b
   BoringSSL-GRPC: dded2a44897e45f28f08ae87a55ee4bcd19bc508
   cloud_firestore: de8bda50bfce3c4ce0037ce5387586c1b5c20695
+  device_info_plus: bf2e3232933866d73fe290f2942f2156cdd10342
   Firebase: aa154fee4e9b8eac17aa42344988865b3e857d33
   firebase_core: 40bc9f4c0ee3a28fbfb1e00e2ddaed744bb86388
   FirebaseAppCheckInterop: c63ae0d003274f145174849c545ab861593beaf9

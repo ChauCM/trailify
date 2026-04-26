@@ -1,0 +1,35 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Existing rules for remote_config (if applicable)
+    match /remote_config/{document=**} {
+      allow read: if true;
+      allow write: if false;
+    }
+
+    // Event logs -- mobile clients can create (with App Check), dashboard users can read.
+    match /event_logs/{logId} {
+      allow create: if request.appCheck.token.size() > 0;
+      allow read: if request.auth != null;
+      allow update, delete: if false;
+    }
+
+    // Device profiles -- mobile clients can write (with App Check), dashboard users can read.
+    match /device_profiles/{profileId} {
+      allow create, update: if request.appCheck.token.size() > 0;
+      allow read: if request.auth != null;
+      allow delete: if false;
+    }
+
+    // Optional: restrict reads to a specific email domain.
+    // Uncomment and replace 'yourcompany\\.com' with your domain:
+    //
+    // match /event_logs/{logId} {
+    //   allow create: if request.appCheck.token.size() > 0;
+    //   allow read: if request.auth != null
+    //                && request.auth.token.email.matches('.*@yourcompany\\.com$');
+    //   allow update, delete: if false;
+    // }
+  }
+}

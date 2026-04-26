@@ -1,0 +1,55 @@
+{
+  "indexes": [
+    {
+      "collectionGroup": "event_logs",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "userId", "order": "ASCENDING" },
+        { "fieldPath": "timestamp", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "event_logs",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "userEmail", "order": "ASCENDING" },
+        { "fieldPath": "timestamp", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "event_logs",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "userId", "order": "ASCENDING" },
+        { "fieldPath": "eventType", "order": "ASCENDING" },
+        { "fieldPath": "timestamp", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "event_logs",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "deviceId", "order": "ASCENDING" },
+        { "fieldPath": "timestamp", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "event_logs",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "eventType", "order": "ASCENDING" },
+        { "fieldPath": "timestamp", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "event_logs",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "userId", "order": "ASCENDING" },
+        { "fieldPath": "sessionId", "order": "ASCENDING" },
+        { "fieldPath": "timestamp", "order": "ASCENDING" }
+      ]
+    }
+  ],
+  "fieldOverrides": []
+}
