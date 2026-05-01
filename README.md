@@ -112,6 +112,8 @@ Documents auto-expire after 90 days via the `expiresAt` TTL field.
 
 ### Querying Tips
 
+Use the [Trailify Dashboard](https://trailify.run) to search and filter events visually, or query Firestore directly:
+
 ```
 userId == "USR_100042"                              → all events for a user
 userEmail == "jane@example.com"                     → across apps
@@ -128,6 +130,8 @@ userId == "USR_100042" AND eventType == "api_error" → just API failures
 - **Auth lifecycle** -- login, logout, token refresh events
 - **User action logging** -- explicit events at key points (send message, upload file, etc.)
 - **Debug overlay** -- in-app console with filtering, search, and sync status
+- **Web dashboard** -- investigate events at [trailify.run](https://trailify.run) or self-deploy (see [dashboard/](dashboard/))
+- **Device profiles** -- capture device model, OS, screen size, and track sessions per device
 - **Identity backfill** -- pre-auth events are retroactively tagged with the user's identity after login
 - **Privacy controls** -- header/body redaction, URL exclusions, configurable body capture
 
@@ -255,6 +259,53 @@ Trailify.instance.openConsole(context);
 | `localOnlyEventTypes` | `Set<String>?` | `null` | Event types that stay on device |
 | `memoryLimit` | `int` | `500` | Max events in memory for overlay |
 | `localRetentionDays` | `int` | `7` | Days to keep events locally |
+| `password` | `String?` | `null` | Password to protect the debug overlay |
+| `ignorePassword` | `bool` | `true` | Skip password prompt for the overlay |
+| `onShare` | `Function(String)?` | `null` | Custom share handler for exported events |
+| `deviceInfo` | `Map<String, dynamic>?` | `null` | Device info to store as a device profile |
+
+## Device Profiles
+
+Pass `deviceInfo` during init to capture device details and track sessions:
+
+```dart
+import 'package:device_info_plus/device_info_plus.dart';
+
+final deviceInfoPlugin = DeviceInfoPlugin();
+final info = await deviceInfoPlugin.iosInfo;
+
+await Trailify.instance.init(
+  // ...other params
+  deviceInfo: {
+    'model': info.model,
+    'brand': 'Apple',
+    'osVersion': info.systemVersion,
+    'isPhysicalDevice': info.isPhysicalDevice,
+    'screenWidth': MediaQuery.of(context).size.width,
+    'screenHeight': MediaQuery.of(context).size.height,
+  },
+);
+```
+
+Device profiles are stored locally and synced to the `device_profiles` Firestore collection. Each session is appended to a session history on the device profile (up to 20 recent sessions).
+
+## Web Dashboard
+
+Investigate events visually at **[trailify.run](https://trailify.run)** -- no install required.
+
+1. Enable Email/Password auth in your Firebase project
+2. Create accounts for team members (Firebase Console > Authentication > Add User)
+3. Add `trailify.run` as an authorized domain
+4. Deploy the Firestore security rules from [`dashboard/firestore.rules`](dashboard/firestore.rules)
+5. Visit [trailify.run](https://trailify.run), paste your Firebase config, sign in
+
+**Dashboard features:**
+- **Investigate** -- search by userId, email, or deviceId with filter tabs and full payload detail
+- **Session Timeline** -- visual chronological timeline for a single session
+- **Device Profiles** -- device info and recent session history
+- **Error Dashboard** -- aggregate errors across all users
+
+For self-hosting, see [`dashboard/README.md`](dashboard/README.md).
 
 ## Architecture
 
@@ -269,8 +320,14 @@ Trailify Core
   └── Sembast DB (persistent)
         │
         ▼
-      Sync Engine ──▶ Cloud Firestore (event_logs collection)
-                       └── TTL auto-delete after 90 days
+      Sync Engine ──▶ Cloud Firestore
+                       ├── event_logs (TTL auto-delete after 90 days)
+                       └── device_profiles
+                                │
+                       ┌────────▼────────┐
+                       │ Web Dashboard   │
+                       │ trailify.run    │
+                       └─────────────────┘
 ```
 
 ## License
