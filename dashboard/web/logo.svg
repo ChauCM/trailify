@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" fill="none">
+  <defs>
+    <linearGradient id="trailGrad" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#4A6CF7"/>
+      <stop offset="100%" stop-color="#7B61FF"/>
+    </linearGradient>
+  </defs>
+  <!-- Winding trail path connecting two endpoints -->
+  <path d="M17 10 C17 10, 31 10, 31 20 C31 30, 17 30, 17 38" stroke="url(#trailGrad)" stroke-width="5" stroke-linecap="round" fill="none"/>
+  <!-- Top endpoint dot -->
+  <circle cx="17" cy="10" r="5" fill="#4A6CF7"/>
+  <circle cx="17" cy="10" r="2" fill="white"/>
+  <!-- Bottom endpoint dot -->
+  <circle cx="17" cy="38" r="5" fill="#7B61FF"/>
+  <circle cx="17" cy="38" r="2" fill="white"/>
+</svg>

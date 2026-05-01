@@ -6,6 +6,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'auth/auth_gate.dart';
 import 'config/connect_project_screen.dart';
 import 'config/firebase_config_provider.dart';
+import 'widgets/trailify_logo.dart';
 import 'screens/device_profile_screen.dart';
 import 'screens/error_dashboard_screen.dart';
 import 'screens/session_timeline_screen.dart';
@@ -155,7 +156,7 @@ class _DashboardShellState extends State<_DashboardShell> {
               labelType: NavigationRailLabelType.all,
               leading: Padding(
                 padding: const EdgeInsets.symmetric(vertical: 12),
-                child: Icon(Icons.route_rounded, size: 28, color: Theme.of(context).colorScheme.primary),
+                child: const TrailifyLogo(size: 28),
               ),
               trailing: Expanded(
                 child: Align(

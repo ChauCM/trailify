@@ -1,6 +1,8 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
+import '../widgets/trailify_logo.dart';
+
 class SignInScreen extends StatefulWidget {
   const SignInScreen({super.key});
 
@@ -94,7 +96,7 @@ class _SignInScreenState extends State<SignInScreen> {
                 children: [
                   Row(
                     children: [
-                      Icon(Icons.route_rounded, size: 28, color: theme.colorScheme.primary),
+                      const TrailifyLogo(size: 28),
                       const SizedBox(width: 10),
                       Text('Trailify', style: theme.textTheme.headlineSmall),
                     ],

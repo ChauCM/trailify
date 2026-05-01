@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../widgets/trailify_logo.dart';
 import 'firebase_config_provider.dart';
 
 class ConnectProjectScreen extends StatefulWidget {
@@ -55,7 +56,7 @@ class _ConnectProjectScreenState extends State<ConnectProjectScreen> {
               children: [
                 Row(
                   children: [
-                    Icon(Icons.route_rounded, size: 32, color: theme.colorScheme.primary),
+                    const TrailifyLogo(size: 32),
                     const SizedBox(width: 12),
                     Text('Trailify Dashboard', style: theme.textTheme.headlineMedium),
                   ],

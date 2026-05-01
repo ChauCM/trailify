@@ -31,6 +31,23 @@
       "type": "dart",
       "program": "lib/main.dart",
       "flutterMode": "release"
+    },
+    {
+      "name": "Dashboard (Chrome)",
+      "cwd": "dashboard",
+      "request": "launch",
+      "type": "dart",
+      "program": "lib/main.dart",
+      "deviceId": "chrome"
+    },
+    {
+      "name": "Dashboard (Chrome, debug)",
+      "cwd": "dashboard",
+      "request": "launch",
+      "type": "dart",
+      "program": "lib/main.dart",
+      "deviceId": "chrome",
+      "flutterMode": "debug"
     }
   ]
 }
