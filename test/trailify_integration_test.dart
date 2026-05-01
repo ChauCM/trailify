@@ -48,7 +48,7 @@ void main() {
 
     Trailify.instance.userAction(
       action: 'send_message',
-      context: {'conversationId': 42, 'textLength': 156},
+      details: {'conversationId': 42, 'textLength': 156},
     );
 
     await Trailify.instance.log(

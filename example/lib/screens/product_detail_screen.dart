@@ -61,7 +61,7 @@ class ProductDetailScreen extends StatelessWidget {
                   onPressed: () {
                     Trailify.instance.userAction(
                       action: 'add_to_cart',
-                      context: {
+                      details: {
                         'productId': id,
                         'productName': product.name,
                         'price': product.price,
@@ -83,7 +83,7 @@ class ProductDetailScreen extends StatelessWidget {
                 onPressed: () {
                   Trailify.instance.userAction(
                     action: 'toggle_favorite',
-                    context: {'productId': id, 'isFavorite': true},
+                    details: {'productId': id, 'isFavorite': true},
                   );
                 },
                 icon: const Icon(Icons.favorite_border_rounded),

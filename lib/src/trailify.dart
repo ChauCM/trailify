@@ -177,13 +177,13 @@ class Trailify {
 
   void userAction({
     required String action,
-    Map<String, dynamic>? context,
+    Map<String, dynamic>? details,
   }) {
     log(
       eventType: 'user_action',
       payload: {
         'action': action,
-        if (context != null) 'context': context,
+        if (details != null) 'details': details,
       },
     );
   }
@@ -217,6 +217,12 @@ class Trailify {
         if (context != null) 'context': context,
       },
     );
+  }
+
+  // ── Sync ──
+
+  Future<void> syncNow() async {
+    await _syncEngine?.flush();
   }
 
   // ── Testing ──

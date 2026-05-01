@@ -1513,7 +1513,7 @@ Example: logging a message send:
 // Before sending
 Trailify.instance.userAction(
   action: 'send_message',
-  context: {
+  details: {
     'conversationId': _conversationId,
     'textLength': htmlContent.length,
   },
@@ -1526,7 +1526,7 @@ Example: logging a file upload:
 // Before upload
 Trailify.instance.userAction(
   action: 'upload_images',
-  context: {
+  details: {
     'conversationId': _conversationId,
     'imageCount': state.selectedImages.length,
   },

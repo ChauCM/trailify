@@ -20,7 +20,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     setState(() => setter(value));
     Trailify.instance.userAction(
       action: 'toggle_setting',
-      context: {'setting': setting, 'enabled': value},
+      details: {'setting': setting, 'enabled': value},
     );
   }
 
@@ -77,7 +77,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             onTap: () {
               Trailify.instance.userAction(
                 action: 'view_profile',
-                context: {'source': 'settings'},
+                details: {'source': 'settings'},
               );
             },
           ),

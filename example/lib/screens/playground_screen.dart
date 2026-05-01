@@ -180,7 +180,7 @@ class _PlaygroundScreenState extends State<PlaygroundScreen> {
                 icon: Icons.shopping_cart_rounded,
                 onTap: () => Trailify.instance.userAction(
                   action: 'tap_buy_button',
-                  context: {'productId': 42, 'price': 19.99},
+                  details: {'productId': 42, 'price': 19.99},
                 ),
               ),
               _ActionTile(
@@ -189,7 +189,7 @@ class _PlaygroundScreenState extends State<PlaygroundScreen> {
                 icon: Icons.send_rounded,
                 onTap: () => Trailify.instance.userAction(
                   action: 'send_message',
-                  context: {
+                  details: {
                     'conversationId': 7,
                     'textLength': 156,
                     'hasImages': false
@@ -202,7 +202,7 @@ class _PlaygroundScreenState extends State<PlaygroundScreen> {
                 icon: Icons.favorite_rounded,
                 onTap: () => Trailify.instance.userAction(
                   action: 'toggle_favorite',
-                  context: {'itemId': 99, 'isFavorite': true},
+                  details: {'itemId': 99, 'isFavorite': true},
                 ),
               ),
             ],

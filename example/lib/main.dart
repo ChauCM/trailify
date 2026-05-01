@@ -124,7 +124,7 @@ class _AppState extends State<App> {
 
     Trailify.instance.userAction(
       action: 'send_message',
-      context: {'conversationId': 7, 'textLength': 42, 'hasImages': false},
+      details: {'conversationId': 7, 'textLength': 42, 'hasImages': false},
     );
 
     Trailify.instance.error(

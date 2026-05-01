@@ -218,7 +218,7 @@ Trailify.instance.auth(
 ```dart
 Trailify.instance.userAction(
   action: 'send_message',
-  context: {
+  details: {
     'conversationId': 42,
     'textLength': 156,
   },
